@@ -1,0 +1,39 @@
+﻿Build started 2014/8/4 19:48:53.
+     1>Project "C:\Users\Leo\Desktop\finalproject\finalSample\finalSample.vcxproj" on node 2 (build target(s)).
+     1>InitializeBuildStatus:
+         Creating "Debug\finalSample.unsuccessfulbuild" because "AlwaysCreate" was specified.
+       ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt main.cpp
+         main.cpp
+     1>c:\opencv\build\include\opencv2\flann\logger.h(66): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(234) : see declaration of 'fopen'
+     1>c:\opencv\build\include\opencv2\legacy\blobtrack.hpp(187): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\string.h(105) : see declaration of 'strcpy'
+     1>c:\opencv\build\include\opencv2\legacy\blobtrack.hpp(256): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\string.h(110) : see declaration of 'strcat'
+     1>c:\users\leo\desktop\finalproject\finalsample\facecrop.h(56): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\string.h(188) : see declaration of 'strncpy'
+     1>c:\users\leo\desktop\finalproject\finalsample\main.cpp(95): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\leo\desktop\finalproject\finalsample\main.cpp(100): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\leo\desktop\finalproject\finalsample\main.cpp(103): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\leo\desktop\finalproject\finalsample\main.cpp(103): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\leo\desktop\finalproject\finalsample\main.cpp(105): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\leo\desktop\finalproject\finalsample\main.cpp(105): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Leo\Desktop\finalproject\Debug\finalSample.exe" /INCREMENTAL:NO /NOLOGO opencv_features2d244.lib opencv_nonfree244.lib opencv_calib3d244d.lib opencv_contrib244d.lib opencv_core244d.lib opencv_features2d244d.lib opencv_flann244d.lib opencv_gpu244d.lib opencv_highgui244d.lib opencv_imgproc244d.lib opencv_legacy244d.lib opencv_objdetect244d.lib opencv_ts244d.lib opencv_video244d.lib opencv_nonfree244d.lib opencv_photo244d.lib opencv_stitching244d.lib opencv_videostab244d.lib opencv_ml244d.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /ManifestFile:"Debug\finalSample.exe.intermediate.manifest" /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /DEBUG /PDB:"C:\Users\Leo\Desktop\finalproject\Debug\finalSample.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Leo\Desktop\finalproject\Debug\finalSample.lib" /MACHINE:X86 Debug\FaceCrop.obj
+         Debug\FaceDetection.obj
+         Debug\main.obj
+         Debug\OpenCVASMAlignment.obj
+     1>FaceCrop.obj : warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/INCREMENTAL:NO' specification
+            Creating library C:\Users\Leo\Desktop\finalproject\Debug\finalSample.lib and object C:\Users\Leo\Desktop\finalproject\Debug\finalSample.exp
+         finalSample.vcxproj -> C:\Users\Leo\Desktop\finalproject\Debug\finalSample.exe
+       Manifest:
+         C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\bin\mt.exe /nologo /verbose /outputresource:"C:\Users\Leo\Desktop\finalproject\Debug\finalSample.exe;#1" /manifest Debug\finalSample.exe.intermediate.manifest
+       FinalizeBuildStatus:
+         Deleting file "Debug\finalSample.unsuccessfulbuild".
+         Touching "Debug\finalSample.lastbuildstate".
+     1>Done Building Project "C:\Users\Leo\Desktop\finalproject\finalSample\finalSample.vcxproj" (build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:05.20

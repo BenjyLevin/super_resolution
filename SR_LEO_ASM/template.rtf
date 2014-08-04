@@ -1,0 +1,358 @@
+{\rtf1\ansi\ansicpg936\cocoartf1265\cocoasubrtf200
+{\fonttbl\f0\fnil\fcharset0 Menlo-Regular;\f1\fnil\fcharset134 STHeitiSC-Light;}
+{\colortbl;\red255\green255\blue255;\red100\green56\blue32;\red196\green26\blue22;\red170\green13\blue145;
+\red92\green38\blue153;\red28\green0\blue207;\red46\green13\blue110;\red38\green71\blue75;\red0\green116\blue0;
+\red63\green110\blue116;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww19720\viewh13340\viewkind0
+\deftab529
+\pard\tx529\pardeftab529\pardirnatural
+
+\f0\fs22 \cf2 \CocoaLigature0 #include \cf3 <opencv2/opencv.hpp>\cf2 \
+#include \cf3 <iostream>\cf2 \
+#include \cf3 <fstream>\cf2 \
+#include \cf3 <vector>\cf2 \
+#include \cf3 <cmath>\cf2 \
+#include \cf3 <assert.h>\cf2 \
+#include \cf3 <opencv2/opencv.hpp>\cf2 \
+#include \cf3 <opencv2/legacy/compat.hpp>\cf2 \
+#include \cf3 <stdio.h>\cf2 \
+#include \cf3 <iostream>\cf2 \
+#include \cf3 <string>\cf2 \
+#include \cf3 <stdlib.h>\cf2 \
+#include \cf3 <sstream>\cf2 \
+#include \cf3 <opencv2/core/core.hpp>\cf2 \
+#include \cf3 <opencv2/highgui/highgui.hpp>\cf2 \
+#include \cf3 <opencv2/nonfree/features2d.hpp>\cf2 \
+#include \cf3 <opencv2/legacy/legacy.hpp>\cf2 \
+\cf4 using\cf0  \cf4 namespace\cf0  \cf5 cv\cf0 ;\
+\cf4 using\cf0  \cf4 namespace\cf0  \cf5 std\cf0 ;\
+\cf2 #include \cf3 <algorithm>\cf2 \
+#include \cf3 <ctime>\cf2 \
+#include \cf3 "opencv2/calib3d/calib3d.hpp"\cf2 \
+#include \cf3 <math.h>\cf2 \
+\cf0 \
+\cf2 #define mp make_pair\
+#define pb push_back\
+\cf0 \
+\cf2 #define A \cf6 0.1\cf2 \
+#define P \cf6 1\cf2 \
+#define B \cf6 1\cf2 \
+#define FRAMENUM \cf6 80\cf2 \
+#define GAIN \cf6 10.0\cf2 \
+\cf0 \
+\cf4 using\cf0  \cf4 namespace\cf0  \cf5 std\cf0 ;\
+\cf4 using\cf0  \cf4 namespace\cf0  \cf5 cv\cf0 ;\
+\cf4 class\cf0  MatchingInfo\
+\{\
+\cf4 public\cf0 :\
+    \cf5 std\cf0 ::\cf5 vector\cf0 <\cf5 cv\cf0 ::\cf5 KeyPoint\cf0 > keyPoint_query, keyPoint_train;\
+    \cf5 std\cf0 ::\cf5 vector\cf0 <\cf5 cv\cf0 ::\cf5 DMatch\cf0 > good_matches;\
+    \cf4 float\cf0  vec_x, vec_y;\
+\};\
+\
+\
+\cf4 inline\cf0  \cf4 double\cf0  sigmoid(\cf4 double\cf0  x) \{\
+    \cf4 return\cf0  \cf6 1.0\cf0  / (\cf6 1.0\cf0  + \cf7 exp\cf0 (-\cf2 GAIN\cf0  * (x - \cf6 0.5\cf0 )));\
+\}\
+\
+\cf4 inline\cf0  \cf4 double\cf0  lengthSquare (\cf4 double\cf0  x, \cf4 double\cf0  y) \{\
+    \cf4 return\cf0  \cf7 pow\cf0 (x,\cf6 2\cf0 )+\cf7 pow\cf0 (y,\cf6 2\cf0 );\
+\}\
+\
+\cf4 inline\cf0  \cf4 double\cf0  length (\cf4 double\cf0  x, \cf4 double\cf0  y) \{\
+    \cf4 return\cf0  \cf7 pow\cf0 (\cf8 lengthSquare\cf0 (x,y),\cf6 0.5\cf0 );\
+\}\
+\
+\cf5 CvPoint\cf0  getMappingPoint (\cf5 CvPoint\cf0  p, \cf5 CvPoint\cf0  q, \cf4 double\cf0  u, \cf4 double\cf0  v) \{\
+    \cf4 double\cf0  vx =  q.\cf5 y\cf0  - p.\cf5 y\cf0 ;\
+    \cf4 double\cf0  vy = -q.\cf5 x\cf0  + p.\cf5 x\cf0 ;\
+    \cf4 double\cf0  hx =  q.\cf5 x\cf0  - p.\cf5 x\cf0 ;\
+    \cf4 double\cf0  hy =  q.\cf5 y\cf0  - p.\cf5 y\cf0 ;\
+    \cf4 double\cf0  vu = \cf8 length\cf0 (vx, vy);\
+    \
+    \cf4 double\cf0  sx = p.\cf5 x\cf0  + u*hx + (vx/vu)*v;\
+    \cf4 double\cf0  sy = p.\cf5 y\cf0  + u*hy + (vy/vu)*v;\
+    \cf9 //printf("u=%f hx=%f vx/vu=%f v=%f \\n", u, hx, vx/vu, rv);\cf0 \
+    \
+    \cf4 return\cf0  \cf7 cvPoint\cf0 (sx, sy);\
+\}\
+\
+\cf4 int\cf0  main(\cf4 int\cf0  argc, \cf4 char\cf0 ** argv) \{\
+    \
+    \cf4 const\cf0  \cf4 char\cf0 * srcImageFile = \cf3 "/Users/user/Desktop/test/2/frame1_7.jpg"\cf0 ;\
+    \cf9 //const char* srcFeatureFile = argv[2];\cf0 \
+    \cf4 const\cf0  \cf4 char\cf0 * destImageFile = \cf3 "/Users/user/Desktop/test/2/frame1_20.jpg"\cf0 ;\
+    \cf9 //const char* destFeatureFile = ;\cf0 \
+    \cf10 MatchingInfo\cf0  info;\
+    \cf5 Mat\cf0  img_object = \cf7 imread\cf0 ( srcImageFile,\cf6 0\cf0 );\
+    \cf5 Mat\cf0  img_scene = \cf7 imread\cf0 ( destImageFile,\cf6 0\cf0 );\
+    \cf5 Mat\cf0  img_objectshow= \cf7 imread\cf0 ( srcImageFile,\cf6 1\cf0 );\
+    \cf5 Mat\cf0  img_sceneshow= \cf7 imread\cf0 ( destImageFile,\cf6 1\cf0 );\
+ \
+    \
+    \cf9 //-- Step 1: Detect the keypoints using SURF Detector\cf0 \
+    \cf4 int\cf0  minHessian = \cf6 20\cf0 ;    \cf9 //hessian matrix\cf0 \
+    \
+    \cf5 SurfFeatureDetector\cf0  detector(minHessian);\
+    \cf5 std\cf0 ::\cf5 vector\cf0 <\cf5 KeyPoint\cf0 > keypoints_object, keypoints_scene;\
+    detector.\cf7 detect\cf0 ( img_object, info.\cf10 keyPoint_query\cf0  );\
+    detector.\cf7 detect\cf0 ( img_scene, info.\cf10 keyPoint_train\cf0  );\
+    \
+    \cf9 //draw keypoints\cf0 \
+    \cf5 Mat\cf0  img_keypoints_object,img_keypoints_scene;\
+    \cf9 //memory first\cf0 \
+    \cf7 drawKeypoints\cf0 (img_object,info.\cf10 keyPoint_query\cf0 ,img_keypoints_object,\cf5 Scalar\cf0 ::\cf7 all\cf0 (-\cf6 1\cf0 ),\cf5 DrawMatchesFlags\cf0 ::\cf7 DEFAULT\cf0 );\
+    \cf7 drawKeypoints\cf0 (img_scene,info.\cf10 keyPoint_train\cf0 ,img_keypoints_scene,\cf5 Scalar\cf0 ::\cf7 all\cf0 (-\cf6 1\cf0 ),\cf5 DrawMatchesFlags\cf0 ::\cf7 DEFAULT\cf0 );\
+    \cf9 //then show\cf0 \
+    \cf7 imshow\cf0 (\cf3 "surf_keypoints_object"\cf0 ,img_keypoints_object);\
+    \cf9 // imwrite("/Users/user/Desktop/SURFfeature3_1.jpg", img_keypoints_object);\cf0 \
+    \cf7 imshow\cf0 (\cf3 "surf_keypoints_scene"\cf0 ,img_keypoints_scene);\
+    \cf9 //imwrite("/Users/user/Desktop/SURFfeature3_2.jpg", img_keypoints_scene);\cf0 \
+    \
+    \cf9 //-- Step 2: Calculate descriptors (feature vectors)\cf0 \
+    \cf5 SurfDescriptorExtractor\cf0  extractor;\
+    \cf5 Mat\cf0  descriptors_object, descriptors_scene;\
+    extractor.\cf7 compute\cf0 ( img_object, info.\cf10 keyPoint_query\cf0 , descriptors_object );\
+    extractor.\cf7 compute\cf0 ( img_scene, info.\cf10 keyPoint_train\cf0 , descriptors_scene );\
+    \
+    \cf9 //-- Step 3: Matching descriptor vectors using FLANN matcher\cf0 \
+    \cf5 FlannBasedMatcher\cf0  matcher;\
+    \cf5 std\cf0 ::\cf5 vector\cf0 < \cf5 DMatch\cf0  > matches;\
+    matcher.\cf7 match\cf0 ( descriptors_object, descriptors_scene, matches );\
+    \
+    \cf9 //  double max_dist = 0;\cf0 \
+    \cf4 double\cf0  min_Y = \cf6 100\cf0 ;\
+    \cf4 double\cf0  min_X = \cf6 100\cf0 ;\
+    \
+    \
+    \cf4 for\cf0 ( \cf4 int\cf0  i = \cf6 0\cf0 ; i < descriptors_object.\cf5 rows\cf0 ; i++ )\
+    \{\
+        \
+        \cf5 cv\cf0 ::\cf5 DMatch\cf0  curMatch = matches[\cf7 i\cf0 ];\
+        \cf5 cv\cf0 ::\cf5 KeyPoint\cf0  pt1 = info.\cf10 keyPoint_query\cf0 [\cf7 curMatch\cf0 .\cf7 queryIdx\cf0 ];\
+        \cf5 cv\cf0 ::\cf5 KeyPoint\cf0  pt2 = info.\cf10 keyPoint_train\cf0 [\cf7 curMatch\cf0 .\cf7 trainIdx\cf0 ];\
+        \cf9 //float deltaX = pt2.pt.x - pt1.pt.x;\cf0 \
+        \cf4 float\cf0  deltaY = \cf7 fabsf\cf0 (pt2.\cf5 pt\cf0 .\cf5 y\cf0  - pt1.\cf5 pt\cf0 .\cf5 y\cf0 );\
+        \cf4 float\cf0  deltaX = \cf7 fabsf\cf0 (pt2.\cf5 pt\cf0 .\cf5 x\cf0  - pt1.\cf5 pt\cf0 .\cf5 x\cf0 );\
+        \cf4 if\cf0 (min_Y>deltaY)\
+        \{\
+            min_Y=deltaY;\
+        \}\
+        \cf4 if\cf0 (min_X>deltaX)\
+        \{\
+            min_X=deltaX;\
+        \}\
+        \
+        \cf9 //\}\cf0 \
+        \
+    \}\
+    \cf5 cout\cf0 <<\cf3 "Min of Y= "\cf0 <<min_Y<<\cf7 endl\cf0 ;\
+    \cf5 cout\cf0 <<\cf3 "Min of X= "\cf0 <<min_X<<\cf7 endl\cf0 ;\
+    \cf4 double\cf0  min=\cf6 100\cf0 ;\
+    \cf4 for\cf0 ( \cf4 int\cf0  i = \cf6 0\cf0 ; i < descriptors_object.\cf5 rows\cf0 ; i++ )\
+    \{\
+        \cf4 double\cf0  dist = matches[\cf7 i\cf0 ].\cf5 distance\cf0 ;\
+        \cf4 if\cf0 ( dist < min )\
+            min = dist;\
+        \
+    \}\
+    \cf4 double\cf0   par1=\cf6 35\cf0 ;\
+    \cf4 double\cf0   par2=\cf6 80\cf0 ;\
+    \cf4 while\cf0  (info.\cf10 good_matches\cf0 .\cf7 size\cf0 ()<\cf6 28\cf0 )\
+    \{\
+        \cf4 if\cf0  (par2>\cf6 400\cf0 )\
+        \{\
+            par1=par1+\cf6 5\cf0 ;\
+            par2=\cf6 80\cf0 ;\
+        \}\
+        \cf9 //par1=par1+3;\cf0 \
+        par2=par2+\cf6 3\cf0 ;\
+        info.\cf10 good_matches\cf0 .\cf7 clear\cf0 ();\
+        \cf4 for\cf0 ( \cf4 int\cf0  i = \cf6 0\cf0 ; i < descriptors_object.\cf5 rows\cf0 ; i++ )\
+        \{\
+            \cf5 cv\cf0 ::\cf5 DMatch\cf0  curMatch = matches[\cf7 i\cf0 ];\
+            \cf5 cv\cf0 ::\cf5 KeyPoint\cf0  pt1 = info.\cf10 keyPoint_query\cf0 [\cf7 curMatch\cf0 .\cf7 queryIdx\cf0 ];\
+            \cf5 cv\cf0 ::\cf5 KeyPoint\cf0  pt2 = info.\cf10 keyPoint_train\cf0 [\cf7 curMatch\cf0 .\cf7 trainIdx\cf0 ];\
+            \cf4 float\cf0  deltaY = \cf7 fabsf\cf0 (pt2.\cf5 pt\cf0 .\cf5 y\cf0  - pt1.\cf5 pt\cf0 .\cf5 y\cf0 );\
+            \cf4 float\cf0  deltaX = \cf7 fabsf\cf0 (pt2.\cf5 pt\cf0 .\cf5 x\cf0  - pt1.\cf5 pt\cf0 .\cf5 x\cf0 );\
+            \cf4 if\cf0 (deltaY<par1*min_Y && deltaX<par2*min_X)\
+                info.\cf10 good_matches\cf0 .\cf7 push_back\cf0 (matches[\cf7 i\cf0 ]);\
+        \}\
+        \
+    \}\
+      \cf5 Mat\cf0  img_matches;\
+    \
+    \cf7 drawMatches\cf0 ( img_objectshow, info.\cf10 keyPoint_query\cf0 , img_sceneshow, info.\cf10 keyPoint_train\cf0 ,\
+                info.\cf10 good_matches\cf0 , img_matches, \cf5 Scalar\cf0 ::\cf7 all\cf0 (-\cf6 1\cf0 ), \cf5 Scalar\cf0 ::\cf7 all\cf0 (-\cf6 1\cf0 ),\
+                \cf5 vector\cf0 <\cf4 char\cf0 >(), \cf5 DrawMatchesFlags\cf0 ::\cf7 NOT_DRAW_SINGLE_POINTS\cf0  );\
+    \cf7 imshow\cf0 ( \cf3 "Good Matches"\cf0 , img_matches );\
+    \
+    \
+    \
+    \cf5 IplImage\cf0 * srcImage = \cf7 cvLoadImage\cf0 (srcImageFile, \cf7 CV_LOAD_IMAGE_ANYCOLOR\cf0 |\cf7 CV_LOAD_IMAGE_ANYDEPTH\cf0 );\
+    \cf5 IplImage\cf0 * destImage = \cf7 cvLoadImage\cf0 (destImageFile, \cf7 CV_LOAD_IMAGE_ANYCOLOR\cf0 |\cf7 CV_LOAD_IMAGE_ANYDEPTH\cf0 );\
+    \cf5 IplImage\cf0 * morphImage = \cf7 cvCreateImage\cf0 (\cf7 cvGetSize\cf0 (destImage), \cf2 IPL_DEPTH_8U\cf0 , \cf6 3\cf0 );\
+    \
+    \cf4 if\cf0  (!srcImage || !destImage) \{\
+        \cf5 cerr\cf0  << \cf3 "cannot find image file"\cf0  << \cf7 endl\cf0 ;\
+        \cf7 exit\cf0 (-\cf6 1\cf0 );\
+    \}\
+    \
+    \cf9 // load feature line mapping from text files\cf0 \
+    \cf4 int\cf0  srcFeatureNum=\cf6 12\cf0 ;\
+    \cf4 int\cf0  destFeatureNum=\cf6 12\cf0 ;\
+    \cf5 vector\cf0 < \cf5 pair\cf0  <\cf5 CvPoint\cf0 , \cf5 CvPoint\cf0 > > srcFeatures;\
+    \cf5 vector\cf0 < \cf5 pair\cf0  <\cf5 CvPoint\cf0 , \cf5 CvPoint\cf0 > > destFeatures;\
+    \
+    \{\
+        \cf9 //ifstream srcFeatureStream(srcFeatureFile);\cf0 \
+        \cf9 //ifstream destFeatureStream(destFeatureFile);\cf0 \
+        \
+        \cf9 //srcFeatureStream >> srcFeatureNum;\cf0 \
+        \cf4 for\cf0  (\cf4 int\cf0  i=\cf6 0\cf0 ; i<srcFeatureNum; i++)\
+        \{\
+            \cf5 cv\cf0 ::\cf5 KeyPoint\cf0  pt1 = info.\cf10 keyPoint_query\cf0 [\cf7 info\cf0 .\cf7 good_matches\cf0 [\cf7 i\cf0 *\cf6 2\cf0 ].\cf7 queryIdx\cf0 ];\
+            \cf5 cv\cf0 ::\cf5 KeyPoint\cf0  pt2 = info.\cf10 keyPoint_train\cf0 [\cf7 info\cf0 .\cf7 good_matches\cf0 [\cf7 i\cf0 *\cf6 2\cf0 +\cf6 1\cf0 ].\cf7 queryIdx\cf0 ];\
+            \cf5 CvPoint\cf0  p1=\cf7 cvPoint\cf0 (pt1.\cf5 pt\cf0 .\cf5 x\cf0 ,pt1.\cf5 pt\cf0 .\cf5 y\cf0 );\
+            \cf5 CvPoint\cf0  p2=\cf7 cvPoint\cf0 (pt2.\cf5 pt\cf0 .\cf5 x\cf0 ,pt2.\cf5 pt\cf0 .\cf5 y\cf0 );\
+            srcFeatures.\cf2 pb\cf0 (\cf2 mp\cf0 (p1,p2));\
+        \}\
+        \
+      \cf9 //  destFeatureStream >> destFeatureNum;\cf0 \
+        \cf4 for\cf0  (\cf4 int\cf0  i=\cf6 0\cf0 ; i<destFeatureNum; i++) \{\
+            \cf5 cv\cf0 ::\cf5 KeyPoint\cf0  pt1 = info.\cf10 keyPoint_query\cf0 [\cf7 info\cf0 .\cf7 good_matches\cf0 [\cf7 i\cf0 *\cf6 2\cf0 ].\cf7 trainIdx\cf0 ];\
+            \cf5 cv\cf0 ::\cf5 KeyPoint\cf0  pt2 = info.\cf10 keyPoint_train\cf0 [\cf7 info\cf0 .\cf7 good_matches\cf0 [\cf7 i\cf0 *\cf6 2\cf0 +\cf6 1\cf0 ].\cf7 trainIdx\cf0 ];\
+            \cf5 CvPoint\cf0  p1=\cf7 cvPoint\cf0 (pt1.\cf5 pt\cf0 .\cf5 x\cf0 ,pt1.\cf5 pt\cf0 .\cf5 y\cf0 );\
+            \cf5 CvPoint\cf0  p2=\cf7 cvPoint\cf0 (pt2.\cf5 pt\cf0 .\cf5 x\cf0 ,pt2.\cf5 pt\cf0 .\cf5 y\cf0 );\
+            destFeatures.\cf2 pb\cf0 (\cf2 mp\cf0 (p1,p2));\
+        \}\
+        \
+      \cf9 //  srcFeatureStream.close();\cf0 \
+      \cf9 // destFeatureStream.close();\cf0 \
+    \}\
+    \
+    \cf4 int\cf0  w = destImage->\cf5 width\cf0 ;\
+    \cf4 int\cf0  h = destImage->\cf5 height\cf0 ;\
+    \
+    \cf5 vector\cf0 < \cf5 pair\cf0  <\cf5 CvPoint\cf0 , \cf5 CvPoint\cf0 > > targetFeatures(destFeatureNum);\
+    \cf4 int\cf0  fileIndex = \cf6 0\cf0 ;\
+    \
+    \cf7 cvNamedWindow\cf0 (\cf3 "mywindow"\cf0 );\
+    \cf9 // increase time parameter\cf0 \
+    \cf4 for\cf0  (\cf4 double\cf0  t=\cf6 0\cf0 ; t<=\cf6 1.0F\cf0 ; t+=\cf6 1.0F\cf0 /\cf2 FRAMENUM\cf0 ) \{\
+        \cf9 // calculate intermediate feature line\cf0 \
+        \cf4 for\cf0  (\cf4 int\cf0  i=\cf6 0\cf0 ; i<destFeatureNum; i++) \{\
+            \cf5 pair\cf0  <\cf5 CvPoint\cf0 , \cf5 CvPoint\cf0 > sp = srcFeatures[\cf7 i\cf0 ];\
+            \cf5 pair\cf0  <\cf5 CvPoint\cf0 , \cf5 CvPoint\cf0 > dp = destFeatures[\cf7 i\cf0 ];\
+            \cf5 CvPoint\cf0  t1 = \cf7 cvPoint\cf0 ( (\cf6 1.0F\cf0 -t)*sp.\cf5 first\cf0 .\cf5 x\cf0  + t*dp.\cf5 first\cf0 .\cf5 x\cf0 , (\cf6 1.0F\cf0 -t)*sp.\cf5 first\cf0 .\cf5 y\cf0  + t*dp.\cf5 first\cf0 .\cf5 y\cf0  );\
+            \cf5 CvPoint\cf0  t2 = \cf7 cvPoint\cf0 ( (\cf6 1.0F\cf0 -t)*sp.\cf5 second\cf0 .\cf5 x\cf0  + t*dp.\cf5 second\cf0 .\cf5 x\cf0 , (\cf6 1.0F\cf0 -t)*sp.\cf5 second\cf0 .\cf5 y\cf0  + t*dp.\cf5 second\cf0 .\cf5 y\cf0  );\
+            targetFeatures[\cf7 i\cf0 ] = \cf2 mp\cf0 (t1, t2);\
+        \}\
+        \
+        \cf9 // calculate warped images from src image and dest image, and cross-dissolve two warped images into target image\cf0 \
+        \cf4 for\cf0  (\cf4 int\cf0  y=\cf6 0\cf0 ; y<h; y++) \{\
+            \cf4 for\cf0  (\cf4 int\cf0  x=\cf6 0\cf0 ; x<w; x++) \{\
+                \cf4 double\cf0  sumsdx=\cf6 0\cf0 , sumsdy=\cf6 0\cf0 , sumddx=\cf6 0\cf0 , sumddy=\cf6 0\cf0 , sumweight=\cf6 0\cf0 ;\
+                \cf4 for\cf0  (\cf4 int\cf0  i=\cf6 0\cf0 ; i<destFeatureNum; i++) \{\
+                    \cf9 // calculate weight for point(x,y) with line(i)\cf0 \
+                    \cf4 double\cf0  u,v,rawv,weight;\
+                    \{\
+                        \cf5 pair\cf0 <\cf5 CvPoint\cf0 ,\cf5 CvPoint\cf0 > tp = targetFeatures[\cf7 i\cf0 ];\
+                        \cf9 // vertical vector is ps.second.y-ps.first.y, -ps.second.x+ps.first.x\cf0 \
+                        \cf4 double\cf0  vx =  tp.\cf5 second\cf0 .\cf5 y\cf0  - tp.\cf5 first\cf0 .\cf5 y\cf0 ;\
+                        \cf4 double\cf0  vy = -tp.\cf5 second\cf0 .\cf5 x\cf0  + tp.\cf5 first\cf0 .\cf5 x\cf0 ;\
+                        \cf4 double\cf0  hx =  tp.\cf5 second\cf0 .\cf5 x\cf0  - tp.\cf5 first\cf0 .\cf5 x\cf0 ;\
+                        \cf4 double\cf0  hy =  tp.\cf5 second\cf0 .\cf5 y\cf0  - tp.\cf5 first\cf0 .\cf5 y\cf0 ;\
+                        \cf4 double\cf0  tx =  x - tp.\cf5 first\cf0 .\cf5 x\cf0 ;\
+                        \cf4 double\cf0  ty =  y - tp.\cf5 first\cf0 .\cf5 y\cf0 ;\
+                        \
+                        \cf9 // calc u\cf0 \
+                        u = (tx*hx + ty*hy) / \cf8 lengthSquare\cf0 (hx,hy);\
+                        \cf4 double\cf0  vu = \cf8 length\cf0 (vx, vy);\
+                        rawv = (vx*tx + vy*ty) / vu;\
+                        \cf4 if\cf0  (u <= \cf6 0\cf0 ) \{\
+                            \cf9 // v = PX\cf0 \
+                            v = \cf8 length\cf0 (tx, ty);\
+                        \} \cf4 else\cf0  \cf4 if\cf0  (u >= \cf6 1\cf0 ) \{\
+                            \cf9 // v = QX\cf0 \
+                            v = \cf8 length\cf0 (x - tp.\cf5 second\cf0 .\cf5 x\cf0 , y - tp.\cf5 second\cf0 .\cf5 y\cf0 );\
+                        \} \cf4 else\cf0  \{\
+                            \cf9 // vertical vector length\cf0 \
+                            v = \cf7 abs\cf0 (rawv);\
+                        \}\
+                        \cf4 double\cf0  lineLength = \cf8 length\cf0 (hx, hy);\
+                        weight = \cf7 pow\cf0  ((\cf7 pow\cf0 (lineLength, \cf2 P\cf0 )/(\cf2 A\cf0 +v)), \cf2 B\cf0 );\
+                        \cf2 assert\cf0 (weight >= \cf6 0\cf0 );\
+                    \}\
+                    \
+                    \{\
+                        \cf5 pair\cf0 <\cf5 CvPoint\cf0 , \cf5 CvPoint\cf0 > sf = srcFeatures[\cf7 i\cf0 ];\
+                        \cf5 CvPoint\cf0  sp = \cf8 getMappingPoint\cf0 (sf.\cf5 first\cf0 , sf.\cf5 second\cf0 , u, rawv);\
+                        \cf4 double\cf0  sdx = x - sp.\cf5 x\cf0 ;\
+                        \cf4 double\cf0  sdy = y - sp.\cf5 y\cf0 ;\
+                        \cf9 //printf("sdx=%f sdy=%f weight=%f\\n", sdx, sdy, weight);\cf0 \
+                        sumsdx += sdx*weight;\
+                        sumsdy += sdy*weight;\
+                    \}\
+                    \
+                    \{\
+                        \cf5 pair\cf0 <\cf5 CvPoint\cf0 , \cf5 CvPoint\cf0 > df = destFeatures[\cf7 i\cf0 ];\
+                        \cf5 CvPoint\cf0  dp = \cf8 getMappingPoint\cf0 (df.\cf5 first\cf0 , df.\cf5 second\cf0 , u, rawv);\
+                        \cf4 double\cf0  ddx = x - dp.\cf5 x\cf0 ;\
+                        \cf4 double\cf0  ddy = y - dp.\cf5 y\cf0 ;\
+                        sumddx += ddx*weight;\
+                        sumddy += ddy*weight;\
+                    \}\
+                    \
+                    sumweight += weight;\
+                \}\
+                \cf4 double\cf0  avesdx = sumsdx/sumweight;\
+                \cf4 double\cf0  avesdy = sumsdy/sumweight;\
+                \cf4 double\cf0  aveddx = sumddx/sumweight;\
+                \cf4 double\cf0  aveddy = sumddy/sumweight;\
+                \
+                \cf4 int\cf0  sx = (\cf4 int\cf0 )(x - avesdx);\
+                \cf4 int\cf0  sy = (\cf4 int\cf0 )(y - avesdy);\
+                \cf4 int\cf0  dx = (\cf4 int\cf0 )(x - aveddx);\
+                \cf4 int\cf0  dy = (\cf4 int\cf0 )(y - aveddy);\
+                \cf4 if\cf0  (sx < \cf6 0\cf0  || sx > srcImage->\cf5 width\cf0  || sy < \cf6 0\cf0  || sy > srcImage->\cf5 height\cf0 ) \{\
+                    \cf4 continue\cf0 ;\
+                \}\
+                \cf4 if\cf0  (dx < \cf6 0\cf0  || dx > destImage->\cf5 width\cf0  || dy < \cf6 0\cf0  || dy > destImage->\cf5 height\cf0 ) \{\
+                    \cf4 continue\cf0 ;\
+                \}\
+                \cf4 int\cf0  destIndex = destImage->\cf5 widthStep\cf0  * dy + dx * destImage->\cf5 nChannels\cf0 ;\
+                \cf4 int\cf0  srcIndex = srcImage->\cf5 widthStep\cf0  * sy + sx * srcImage->\cf5 nChannels\cf0 ;\
+                \cf4 int\cf0  targetIndex = morphImage->\cf5 widthStep\cf0  * y + x * morphImage->\cf5 nChannels\cf0 ;\
+                \cf4 for\cf0  (\cf4 int\cf0  i=\cf6 0\cf0 ; i<morphImage->\cf5 nChannels\cf0 ; i++) \{\
+                    \cf5 uchar\cf0  dp = (destImage->\cf5 imageData\cf0 [destIndex+i]);\
+                    \cf5 uchar\cf0  sp = (srcImage->\cf5 imageData\cf0 [srcIndex+i]);\
+                    \cf4 int\cf0  diff =  (\cf4 int\cf0 )dp - (\cf4 int\cf0 )sp;\
+                    \cf4 int\cf0  newvalue = diff * \cf8 sigmoid\cf0 (t) + sp;\
+                    \cf9 //int newvalue = diff * t + sp;\cf0 \
+                    \cf9 //printf("diff=%d old=%d new=%d\\n", diff, sp, newvalue);\cf0 \
+                    \cf2 assert\cf0 (newvalue <= \cf6 255\cf0  && newvalue >= \cf6 0\cf0 );\
+                    morphImage->\cf5 imageData\cf0 [targetIndex+i] = (\cf5 uchar\cf0 )newvalue;\
+                \}\
+                \cf9 //printf("source=(%d,%d) dest=(%d,%d)\\n", sx, sy, x, y);\cf0 \
+            \}\
+        \}\
+        \cf4 char\cf0  outfile[\cf6 256\cf0 ];\
+        \cf7 sprintf\cf0 (outfile, \cf3 "/Users/user/Desktop/result/morph%03d.jpg"\cf0 , fileIndex++);\
+        \cf9 //int res = cvSaveImage(outfile, morphImage);\cf0 \
+        \cf7 cvShowImage\cf0 (\cf3 "mywindow"\cf0 , morphImage);\
+        \cf7 cvWaitKey\cf0 (\cf6 2\cf0 );\
+        \cf9 //printf("save to %s\\n", outfile);\cf0 \
+    \}\
+    \cf7 cvWaitKey\cf0 (\cf6 0\cf0 );\
+    \
+    \cf9 // 
+\f1 \'e1\'e1\'ca\'bc\'c4\'a9
+\f0 \cf0 \
+    \cf7 cvReleaseImage\cf0 (&srcImage);\
+    \cf7 cvReleaseImage\cf0 (&destImage);\
+    \cf7 cvReleaseImage\cf0 (&morphImage);\
+    \
+    \cf4 return\cf0  \cf6 0\cf0 ;\
+\}\
+}

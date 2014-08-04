@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type='text/xsl' href='_UpgradeReport_Files/UpgradeReport.xslt'?><UpgradeLog>
+<Properties><Property Name="Solution" Value="finalSample">
+</Property><Property Name="Solution File" Value="C:\Users\Leo\Desktop\finalSample\finalSample.sln">
+</Property><Property Name="User Options File" Value="C:\Users\Leo\Desktop\finalSample\finalSample.suo">
+</Property><Property Name="Date" Value="2014年5月31日">
+</Property><Property Name="Time" Value="17:08">
+</Property></Properties><Event ErrorLevel="0" Project="" Source="finalSample.sln" Description="File successfully backed up as C:\Users\Leo\Desktop\finalSample\finalSample.sln.old">
+</Event><Event ErrorLevel="0" Project="" Source="finalSample.suo" Description="File successfully backed up as C:\Users\Leo\Desktop\finalSample\finalSample.suo.old">
+</Event><Event ErrorLevel="0" Project="finalSample" Source="finalSample\finalSample.vcproj" Description="Converting project file 'C:\Users\Leo\Desktop\finalSample\finalSample\finalSample.vcproj'.">
+</Event><Event ErrorLevel="1" Project="finalSample" Source="finalSample\finalSample.vcproj" Description="VCWebServiceProxyGeneratorTool is no longer supported. The tool has been removed from your project settings.">
+</Event><Event ErrorLevel="0" Project="finalSample" Source="finalSample\finalSample.vcproj" Description="Done converting to new project file 'C:\Users\Leo\Desktop\finalSample\finalSample\finalSample.vcxproj'.">
+</Event><Event ErrorLevel="3" Project="finalSample" Source="finalSample\finalSample.vcproj" Description="Converted">
+</Event><Event ErrorLevel="0" Project="" Source="finalSample.sln" Description="Solution converted successfully">
+</Event><Event ErrorLevel="3" Project="" Source="finalSample.sln" Description="Converted">
+</Event></UpgradeLog>

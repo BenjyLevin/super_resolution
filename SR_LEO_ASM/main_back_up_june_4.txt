@@ -1,0 +1,760 @@
+// PR 2011 fall sample code
+// T.A. Chen Shen-Shi 
+// d98922030@csie.ntu.edu.tw
+
+#include "faceDefine.h"
+#include  <direct.h> 
+#include  <windows.h>
+// include toolkit class
+#include "FaceDetection.h"
+#include "OpenCVASMAlignment.h"
+#include "FaceCrop.h"
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/objdetect/objdetect.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include  <opencv2/opencv.hpp>
+#include <opencv2/legacy/compat.hpp>
+#include <stdio.h>
+#include <iostream>
+#include <string>
+#include <stdlib.h>
+#include <sstream>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/nonfree/features2d.hpp>
+#include <opencv2/legacy/legacy.hpp>
+using namespace cv;
+using namespace std;
+void readme();
+#include <algorithm>
+#include <ctime>
+#include "opencv2/calib3d/calib3d.hpp"
+#include <math.h>
+
+int lrx, lry;
+vector <CvPoint> allPoints;
+
+CvMat* fundMat;
+CvMat* points1;
+CvMat* points2;
+
+Point2f area[8];
+std::vector<cv::DMatch> showmatch;
+
+int counter = 16;
+float alpha = 0.98;
+
+
+#include <opencv2/opencv.hpp>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <cmath>
+#include <assert.h>
+#include <opencv2/opencv.hpp>
+#include <opencv2/legacy/compat.hpp>
+#include <stdio.h>
+#include <iostream>
+#include <string>
+#include <stdlib.h>
+#include <sstream>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/nonfree/features2d.hpp>
+#include <opencv2/legacy/legacy.hpp>
+using namespace cv;
+using namespace std;
+#include <algorithm>
+#include <ctime>
+#include "opencv2/calib3d/calib3d.hpp"
+#include <math.h>
+
+#define mp make_pair
+#define pb push_back
+
+#define A 0.1
+#define P 1
+#define B 1
+#define FRAMENUM 60
+#define GAIN 10.0
+
+using namespace std;
+using namespace cv;
+class MatchingInfo
+{
+public:
+    std::vector<cv::KeyPoint> keyPoint_query, keyPoint_train;
+    std::vector<cv::DMatch> good_matches;
+    float vec_x, vec_y;
+};
+
+
+inline double sigmoid(double x) {
+    return 1.0 / (1.0 + exp(-GAIN * (x - 0.5)));
+}
+
+inline double lengthSquare (double x, double y) {
+    return pow(x,2)+pow(y,2);
+}
+
+inline double length (double x, double y) {
+    return pow(lengthSquare(x,y),0.5);
+}
+
+CvPoint getMappingPoint (CvPoint p, CvPoint q, double u, double v) {
+    double vx =  q.y - p.y;
+    double vy = -q.x + p.x;
+    double hx =  q.x - p.x;
+    double hy =  q.y - p.y;
+    double vu = length(vx, vy);
+    
+    double sx = p.x + u*hx + (vx/vu)*v;
+    double sy = p.y + u*hy + (vy/vu)*v;
+    //printf("u=%f hx=%f vx/vu=%f v=%f \n", u, hx, vx/vu, rv);
+    
+    return cvPoint(sx, sy);
+}
+
+
+
+
+int calcFundamental(){
+    
+    if(allPoints.size() != 16) return -1;
+    
+    // preparo la matrice delle corrispodenze
+    
+    points1 = cvCreateMat(2,allPoints.size()/2,CV_32F);
+    points2 = cvCreateMat(2,allPoints.size()/2,CV_32F);
+    CvMat* status = cvCreateMat(1,allPoints.size()/2,CV_8UC1);
+    
+    for(int j = 0; j < allPoints.size(); j++){
+        
+        if(j%2==0){
+          //  cout << allPoints.at(j).x << ' ' << allPoints.at(j).y << endl;
+            cvSetReal2D(points1,0,j-(int)int(j/2),allPoints.at(j).x);
+            cvSetReal2D(points1,1,j-(int)int(j/2),allPoints.at(j).y);
+        }else{
+          //  cout << allPoints.at(j).x << ' ' << allPoints.at(j).y << endl;
+            cvSetReal2D(points2,0,j-(int)int(j/2)-1,allPoints.at(j).x);
+            cvSetReal2D(points2,1,j-(int)int(j/2)-1,allPoints.at(j).y);
+        }
+    }
+    
+    fundMat = cvCreateMat(3,3,CV_32F);
+    
+    int num = cvFindFundamentalMat(points1,points2,fundMat,CV_FM_8POINT,1.0,0.9999,status);
+    
+    return num;
+}
+
+
+int isarea(KeyPoint input, int count)
+{
+    
+    for (int i=0;i<count;i++)
+    {
+        if (25>sqrt((area[i].x-input.pt.x)*(area[i].x-input.pt.x)+(area[i].y-input.pt.y)*(area[i].y-input.pt.y)))
+            return 0;
+    }
+    cout<<"x= "<<input.pt.x<<" y= "<<input.pt.y<<endl;
+    area[count-1] = Point2f(input.pt.x, input.pt.y);
+    return 1;
+}
+
+
+
+FaceDetection *face_detector;
+OpenCVASMAlignment *myAlignment;
+FaceCrop *FaceCropper;
+vector<FaceInfo> CropFaceSet;   //包含Crop後要偵測的資訊
+vector<IplImage*> FaceSet;      //存放Crop後灰階影像
+vector<FP> FaceFP;              //Alignment後存放
+char tmp[100];
+char folder[100]; //待處理影像的資料夾
+char studentID[100]; //學生ID
+char type[100];
+char folderwithout[100];
+char filename[150];
+char dir[300];
+char resultdir[200];
+char savingfolder[200];
+
+void FaceCropping(IplImage *img){
+	        IplImage *ProcessImage = cvCloneImage(img);
+			CropFaceSet.clear();
+			FaceSet.clear(); 
+			
+			FaceCropper = new FaceCrop();
+			FaceCropper->Initial(ProcessImage, FaceFP);
+			FaceCropper->setParameter("CropConfig.txt");
+			//FaceCropper ->setParameter(0.9,1.5,2.0,80,100,5.0);
+            //FaceCropper->CropAllGrayLevelFace(&CropFaceSet);
+			FaceCropper->CropAllFace(&CropFaceSet, &FaceSet );
+			cvReleaseImage(&ProcessImage);
+            delete FaceCropper;
+			
+}
+
+void main()
+{
+	char *src;
+	char *dst;
+
+	 src = "C:/test/3/frame1_1.JPG";
+     dst = "C:/test/3/frame1_30.JPG";
+
+ //   Mat img_object = imread( src,0);
+ //   Mat img_scene = imread( dst,0);
+ //   std::vector<cv::KeyPoint> keyPoint_query, keyPoint_train;
+	//std::vector<cv::DMatch> good_matches;
+ //   
+ //   //-- Step 1: Detect the keypoints using SURF Detector
+ //   int minHessian = 20;    //hessian matrix
+ //   
+ //   SurfFeatureDetector detector(minHessian);
+ //   //std::vector<KeyPoint> keypoints_object, keypoints_scene;
+ //   detector.detect( img_object, keyPoint_query );
+ //   detector.detect( img_scene, keyPoint_train );
+ //   
+ //   //draw keypoints
+ //   Mat img_keypoints_object,img_keypoints_scene;
+ //   //memory first
+ //   drawKeypoints(img_object,keyPoint_query,img_keypoints_object,Scalar::all(-1),DrawMatchesFlags::DEFAULT);
+ //   drawKeypoints(img_scene,keyPoint_train,img_keypoints_scene,Scalar::all(-1),DrawMatchesFlags::DEFAULT);
+ //   //then show
+ //   imshow("surf_keypoints_object",img_keypoints_object);
+ //   // imwrite("/Users/user/Desktop/SURFfeature3_1.jpg", img_keypoints_object);
+ //   imshow("surf_keypoints_scene",img_keypoints_scene);
+ //   //imwrite("/Users/user/Desktop/SURFfeature3_2.jpg", img_keypoints_scene);
+ //   
+ //   //-- Step 2: Calculate descriptors (feature vectors)
+ //   SurfDescriptorExtractor extractor;
+ //   Mat descriptors_object, descriptors_scene;
+ //   extractor.compute( img_object, keyPoint_query, descriptors_object );
+ //   extractor.compute( img_scene, keyPoint_train, descriptors_scene );
+ //   
+ //   //-- Step 3: Matching descriptor vectors using FLANN matcher
+ //   FlannBasedMatcher matcher;
+ //   std::vector< DMatch > matches;
+ //   matcher.match( descriptors_object, descriptors_scene, matches );
+ //   
+ //   //  double max_dist = 0;
+ //   double min_Y = 100;
+ //   double min_X = 100;
+ //   
+ //   
+ //   for( int i = 0; i < descriptors_object.rows; i++ )
+ //   {
+ //       
+ //       cv::DMatch curMatch = matches[i];
+ //       cv::KeyPoint pt1 = keyPoint_query[curMatch.queryIdx];
+ //       cv::KeyPoint pt2 = keyPoint_train[curMatch.trainIdx];
+ //       //float deltaX = pt2.pt.x - pt1.pt.x;
+ //       float deltaY = fabsf(pt2.pt.y - pt1.pt.y);
+ //       float deltaX = fabsf(pt2.pt.x - pt1.pt.x);
+ //       if(min_Y>deltaY)
+ //       {
+ //           min_Y=deltaY;
+ //       }
+ //       if(min_X>deltaX)
+ //       {
+ //           min_X=deltaX;
+ //       }        
+ //   }
+ //   double  par1=35;
+ //   double  par2=80;
+ //   while (good_matches.size()<30)
+ //   {
+ //       if (par2>400)
+ //       {
+ //           par1=par1+5;
+ //           par2=77;
+ //       }
+ //       par2=par2+3;
+ //       good_matches.clear();
+ //       for( int i = 0; i < descriptors_object.rows; i++ )
+ //       {
+ //           cv::DMatch curMatch = matches[i];
+ //           cv::KeyPoint pt1 = keyPoint_query[curMatch.queryIdx];
+ //           cv::KeyPoint pt2 = keyPoint_train[curMatch.trainIdx];
+ //           float deltaY = fabsf(pt2.pt.y - pt1.pt.y);
+ //           float deltaX = fabsf(pt2.pt.x - pt1.pt.x);
+ //           if(deltaY<par1*min_Y && deltaX<par2*min_X)
+ //               good_matches.push_back(matches[i]);
+ //       }
+ //       
+ //   }
+    
+    //Mat img_matches;
+    //drawMatches( img_object, keyPoint_query, img_scene, keyPoint_train,
+    //            good_matches, img_matches, Scalar::all(-1), Scalar::all(-1),
+    //            vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+    //imshow( "Good Matches & Object detection - SURF", img_matches );
+    ////std::cout<<"good_matches.size(): "<<info.good_matches.size()<<"\n";
+
+
+	vector<CvRect> faceWindow; //store each face's rect position
+	vector<CvMat*> alignmentResult1,alignmentResult2; // stroe facial points
+
+	face_detector = new FaceDetection("cascade Data\\haarcascade.xml");
+    myAlignment = new OpenCVASMAlignment();
+	myAlignment->setModelPath("ASM Data/FrontalFace_best.amf");
+	if (myAlignment->loadModel() == -1) {
+		fprintf(stderr,"Could not load ASM model...\n");
+		return;
+	}
+    
+
+	IplImage *img;
+	IplImage *drawimg;
+
+
+	img= cvLoadImage(src);
+	drawimg = cvCloneImage(img);
+ 	faceWindow = face_detector->Detect(img);//人臉偵測
+	if(faceWindow.size() != 0) //若有偵測臉
+	{
+		 //for(int i=0; i<faceWindow.size(); i++)
+									// cvRectangle(drawimg,cvPoint(faceWindow[i].x, faceWindow[i].y),cvPoint(faceWindow[i].x+faceWindow[i].width, faceWindow[i].y+faceWindow[i].height),CV_RGB(255,0,0));
+		myAlignment->SetImage(img);
+	//	 for(int i=0; i<faceWindow.size(); i++)	
+		alignmentResult1.push_back(myAlignment->calcAlignment(faceWindow[0]));
+								for(int i=0; i<alignmentResult1.size(); i++){
+								   for (int k = 0; k < alignmentResult1[i]->rows; k++)
+									 if(k == 27 ||k == 34 || k == 39 || k == 65||k==1||k==3||k==8||k==6||k==13||k==10)
+										cvCircle(drawimg, cvPoint(cvmGet(alignmentResult1[i], k, 0), cvmGet(alignmentResult1[i], k, 1)), 1, CV_RGB(255, 0, 0), 2);
+									// else
+								//		cvCircle(drawimg, cvPoint(cvmGet(alignmentResult1[i], k, 0), cvmGet(alignmentResult1[i], k, 1)), 1, CV_RGB(0, 255, 0), 2);
+								     
+								/*	 FP AlignOK;
+						             AlignOK.righteye.x = cvmGet(alignmentResult1[i], 36, 0);
+						             AlignOK.righteye.y = cvmGet(alignmentResult1[i], 36, 1);
+						             AlignOK.lefteye.x = cvmGet(alignmentResult1[i], 31, 0);
+						             AlignOK.lefteye.y = cvmGet(alignmentResult1[i], 31, 1);;
+						             AlignOK.mouth.x = cvmGet(alignmentResult1[i], 66, 0);
+						             AlignOK.mouth.y = cvmGet(alignmentResult1[i], 66, 1);
+						             AlignOK.nose.x = cvmGet(alignmentResult1[i], 67, 0);
+						             AlignOK.nose.y = cvmGet(alignmentResult1[i], 67, 1);
+						             FaceFP.push_back(AlignOK);
+									 cout<<"mouth.x "<<AlignOK.mouth.x<<" mouth.y "<<AlignOK.mouth.y<<endl;*/
+								 }
+							}
+		cvNamedWindow("ivFace1");
+	cvShowImage("ivFace1",drawimg);
+	img= cvLoadImage(dst);
+	drawimg = cvCloneImage(img);
+ 	faceWindow = face_detector->Detect(img);//人臉偵測
+	if(faceWindow.size() != 0) //若有偵測臉
+	{
+		 //for(int i=0; i<faceWindow.size(); i++)
+		// cvRectangle(drawimg,cvPoint(faceWindow[i].x, faceWindow[i].y),cvPoint(faceWindow[i].x+faceWindow[i].width, faceWindow[i].y+faceWindow[i].height),CV_RGB(255,0,0));
+		myAlignment->SetImage(img);
+	//	 for(int i=0; i<faceWindow.size(); i++)	
+		alignmentResult2.push_back(myAlignment->calcAlignment(faceWindow[0]));
+		for(int i=0; i<alignmentResult2.size(); i++){
+			for (int k = 0; k < alignmentResult2[i]->rows; k++)
+				 if(k == 31 ||k == 36 || k == 66 || k == 67||k==1||k==3||k==8||k==7||k==13||k==10)
+				// if(k == 27 ||k == 34 || k == 39 || k == 65||k==1||k==3||k==8||k==6||k==13)
+					cvCircle(drawimg, cvPoint(cvmGet(alignmentResult2[i], k, 0), cvmGet(alignmentResult2[i], k, 1)), 1, CV_RGB(255, 0, 0), 2);
+					//else
+					//cvCircle(drawimg, cvPoint(cvmGet(alignmentResult2[i], k, 0), cvmGet(alignmentResult2[i], k, 1)), 1, CV_RGB(0, 255, 0), 2);
+								     
+								/*	 FP AlignOK;
+						             AlignOK.righteye.x = cvmGet(alignmentResult2[i], 36, 0);
+						             AlignOK.righteye.y = cvmGet(alignmentResult2[i], 36, 1);
+						             AlignOK.lefteye.x = cvmGet(alignmentResult2[i], 31, 0);
+						             AlignOK.lefteye.y = cvmGet(alignmentResult2[i], 31, 1);;
+						             AlignOK.mouth.x = cvmGet(alignmentResult2[i], 66, 0);
+						             AlignOK.mouth.y = cvmGet(alignmentResult2[i], 66, 1);
+						             AlignOK.nose.x = cvmGet(alignmentResult2[i], 67, 0);
+						             AlignOK.nose.y = cvmGet(alignmentResult2[i], 67, 1);
+						             FaceFP.push_back(AlignOK);
+									 cout<<"mouth.x "<<AlignOK.mouth.x<<" mouth.y "<<AlignOK.mouth.y<<endl;
+									 cout<<"i=  "<<i<<endl;*/
+								 }
+							}
+	cvNamedWindow("ivFace2");
+	cvShowImage("ivFace2",drawimg);
+	
+	// IplImage* morphImage, *leftImage, *rightImage;
+    
+ 
+	 int i=0;
+	int k=33;
+       CvPoint  tmp =  cvPoint(cvmGet(alignmentResult1[i], k, 0), cvmGet(alignmentResult1[i], k, 1));
+        allPoints.push_back(tmp);
+	k=36;
+        tmp =  cvPoint(cvmGet(alignmentResult2[i], k, 0), cvmGet(alignmentResult2[i], k, 1));
+        allPoints.push_back(tmp);
+   k=27;
+         tmp =  cvPoint(cvmGet(alignmentResult1[i], k, 0), cvmGet(alignmentResult1[i], k, 1));
+        allPoints.push_back(tmp);
+	k=31;
+        tmp =  cvPoint(cvmGet(alignmentResult2[i], k, 0), cvmGet(alignmentResult2[i], k, 1));
+        allPoints.push_back(tmp);
+	 k=1;
+      tmp =  cvPoint(cvmGet(alignmentResult1[i], k, 0), cvmGet(alignmentResult1[i], k, 1));
+        allPoints.push_back(tmp);
+        tmp =  cvPoint(cvmGet(alignmentResult2[i], k, 0), cvmGet(alignmentResult2[i], k, 1));
+        allPoints.push_back(tmp);
+	k=3;
+        tmp =  cvPoint(cvmGet(alignmentResult1[i], k, 0), cvmGet(alignmentResult1[i], k, 1));
+        allPoints.push_back(tmp);
+        tmp =  cvPoint(cvmGet(alignmentResult2[i], k, 0), cvmGet(alignmentResult2[i], k, 1));
+        allPoints.push_back(tmp);
+	k=7;
+        tmp =  cvPoint(cvmGet(alignmentResult1[i], k, 0), cvmGet(alignmentResult1[i], k, 1));
+        allPoints.push_back(tmp);
+    k=7;
+        tmp =  cvPoint(cvmGet(alignmentResult2[i], k, 0), cvmGet(alignmentResult2[i], k, 1));
+        allPoints.push_back(tmp);
+	k=8;
+        tmp =  cvPoint(cvmGet(alignmentResult1[i], k, 0), cvmGet(alignmentResult1[i], k, 1));
+        allPoints.push_back(tmp);
+	k=8;
+        tmp =  cvPoint(cvmGet(alignmentResult2[i], k, 0), cvmGet(alignmentResult2[i], k, 1));
+        allPoints.push_back(tmp);
+    k=65;
+      tmp =  cvPoint(cvmGet(alignmentResult1[i], k, 0), cvmGet(alignmentResult1[i], k, 1));
+        allPoints.push_back(tmp);
+	k=66;
+        tmp =  cvPoint(cvmGet(alignmentResult2[i], k, 0), cvmGet(alignmentResult2[i], k, 1));
+        allPoints.push_back(tmp);
+    k=39;
+       tmp =  cvPoint(cvmGet(alignmentResult1[i], k, 0), cvmGet(alignmentResult1[i], k, 1));
+        allPoints.push_back(tmp);
+	k=67;
+        tmp =  cvPoint(cvmGet(alignmentResult2[i], k, 0), cvmGet(alignmentResult2[i], k, 1));
+        allPoints.push_back(tmp);
+    k=10;
+        tmp =  cvPoint(cvmGet(alignmentResult1[i], k, 0), cvmGet(alignmentResult1[i], k, 1));
+        allPoints.push_back(tmp);
+        tmp =  cvPoint(cvmGet(alignmentResult2[i], k, 0), cvmGet(alignmentResult2[i], k, 1));
+        allPoints.push_back(tmp);
+	k=13;
+        tmp =  cvPoint(cvmGet(alignmentResult1[i], k, 0), cvmGet(alignmentResult1[i], k, 1));
+        allPoints.push_back(tmp);
+        tmp =  cvPoint(cvmGet(alignmentResult2[i], k, 0), cvmGet(alignmentResult2[i], k, 1));
+        allPoints.push_back(tmp);
+    
+ //   area[0] = Point2f(cvmGet(alignmentResult1[0], 31, 0), cvmGet(alignmentResult1[0], 31, 1));
+ //   area[1] = Point2f(cvmGet(alignmentResult1[0], 36, 0), cvmGet(alignmentResult1[0], 36, 1));
+	//area[2] = Point2f(cvmGet(alignmentResult1[0], 8, 0), cvmGet(alignmentResult1[0], 8, 1));
+	//area[3] = Point2f(cvmGet(alignmentResult1[0], 5, 0), cvmGet(alignmentResult1[0], 5, 1));
+	//area[4] = Point2f(cvmGet(alignmentResult1[0], 1, 0), cvmGet(alignmentResult1[0], 1, 1));
+ //   i=0;
+ //   int j=0;
+ //   while (i>0)
+ //   {
+ //       cv::DMatch curMatch = info.good_matches[j];
+ //       cv::KeyPoint pt1 = info.keyPoint_query[curMatch.queryIdx];
+ //       cv::KeyPoint pt2 = info.keyPoint_train[curMatch.trainIdx];
+ //       CvPoint tmp = cvPoint(pt1.pt.x,pt1.pt.y);
+ //       if (isarea(pt1,8-i)==1)
+ //       {
+ //           allPoints.push_back(tmp);
+ //           tmp = cvPoint(pt2.pt.x,pt2.pt.y);
+ //           allPoints.push_back(tmp);
+ //           showmatch.push_back(info.good_matches[j]);
+ //           i--;
+ //       }
+ //       j++;
+ //   }
+ //   cout<<"Allpoints are in the line!!"<<endl;
+ //   cout << calcFundamental()<< endl;
+ //   
+ //   // src = "C:/test/2/frame1_1.JPG";
+ //   // dst = "C:/test/2/frame2_1.JPG";
+
+	//leftImage = cvLoadImage(src);
+ //   rightImage = cvLoadImage(dst);
+ //   Mat out;
+
+ //   CvMat* epilines1 = cvCreateMat(3,8,CV_32F);
+ //   CvMat* epilines2 = cvCreateMat(3,8,CV_32F);
+ //   
+ //   cvComputeCorrespondEpilines(points1,1,fundMat,epilines1); // calcola le epilines per ogni punto e resitituisce coeff a b c
+ //   cvComputeCorrespondEpilines(points2,2,fundMat,epilines2); // calcola le epilines per ogni punto e resitituisce coeff a b c
+ //   
+ //   int lineCount;  // numero di scanlines
+ //   
+ //   static CvMatrix3 matrix;
+ //   
+ //   float m00 = cvmGet(fundMat,0,0);
+ //   float m01 = cvmGet(fundMat,0,1);
+ //   float m02 = cvmGet(fundMat,0,2);
+ //   float m10 = cvmGet(fundMat,1,0);
+ //   float m11 = cvmGet(fundMat,1,1);
+ //   float m12 = cvmGet(fundMat,1,2);
+ //   float m20 = cvmGet(fundMat,2,0);
+ //   float m21 = cvmGet(fundMat,2,1);
+ //   float m22 = cvmGet(fundMat,2,2);
+ //   
+ //   
+ //   matrix.m[0][0] = m00;
+ //   matrix.m[0][1] = m01;
+ //   matrix.m[0][2] = m02;
+ //   matrix.m[1][0] = m10;
+ //   matrix.m[1][1] = m11;
+ //   matrix.m[1][2] = m12;
+ //   matrix.m[2][0] = m20;
+ //   matrix.m[2][1] = m21;
+ //   matrix.m[2][2] = m22;
+ //   
+ //   CvMatrix3* matScan = &matrix;
+ //   
+ //   cvMakeScanlines(matScan,cvSize(leftImage->width,leftImage->height),0,0,0,0,&lineCount); // calcolo il numero di scanlines
+ //   
+ //     cout <<"lineCount= "<< lineCount << endl;
+ //   
+ //   int* lengthEpilines1 = new int[lineCount];  // lunghezza delle rette epipolari
+ //   int* lengthEpilines2 = new int[lineCount];
+ //   
+ //   int* epilinesInt1 = new int[4*lineCount];  // cordinate delle rette
+ //   int* epilinesInt2 = new int[4*lineCount];
+ //   
+ //   cvMakeScanlines(matScan,cvSize(leftImage->width,leftImage->height),epilinesInt1,epilinesInt2,lengthEpilines1,lengthEpilines2,&lineCount);
+ //   
+ //   
+ //   
+ //   
+ //   uchar* preWarpData1 = new uchar[max(leftImage->width,leftImage->height)*lineCount*3]; // alloco spazio richiesto
+ //   uchar* preWarpData2 = new uchar[max(leftImage->width,leftImage->height)*lineCount*3];
+ //  
+
+
+ //   cout << "warping " << endl;
+ //   
+ //   cvPreWarpImage(lineCount,leftImage,preWarpData1,lengthEpilines1,epilinesInt1);
+ //   cvPreWarpImage(lineCount,rightImage,preWarpData2,lengthEpilines2,epilinesInt2);
+
+	////cvNamedWindow("prewarp",1);        
+ //   //cvShowImage("prewarp",preWarpData1);
+
+ //   
+
+
+ //   cout << "done " << endl;
+
+ //   
+ //   int* numRuns1 = new int[lineCount];
+ //   int* numRuns2 = new int[lineCount];
+ //   
+ //   int* runs1 = new int[leftImage->width*lineCount];
+ //   int* runs2 = new int[leftImage->width*lineCount];
+ //   
+ //   int* runCorrelation1 = new int[max(leftImage->width,leftImage->height)*lineCount*3];
+ //   int* runCorrelation2 = new int[max(leftImage->width,leftImage->height)*lineCount*3];
+ //   
+ //   cvFindRuns(lineCount, preWarpData1, preWarpData2, lengthEpilines1, lengthEpilines2, runs1, runs2, numRuns1, numRuns2);
+ //   
+ //   int* scanlinesMorphedImage = new int[lineCount*2*4];
+ //   int* numScanlinesMorphedImage = new int[lineCount*2*4];
+ //   
+ //   cout << "runs " << endl;
+ //   
+ //   cvDynamicCorrespondMulti(lineCount, runs1, numRuns1, runs2, numRuns2, runCorrelation1, runCorrelation2);
+ //   
+ //   cout << "dyn " << endl;
+ //   
+ //   uchar* tmpDataImageDst = new uchar[max(leftImage->width,leftImage->height)*lineCount*3];
+ //   while(alpha>0.02)
+ //   {
+ //       int* scanlinesA = new int[lineCount*2*4];
+ //       int* lenghts = new int[lineCount*2*4];  
+ //       cvMakeAlphaScanlines(epilinesInt1, epilinesInt2, scanlinesMorphedImage, numScanlinesMorphedImage ,lineCount, alpha);      
+ //       cvMorphEpilinesMulti(lineCount, preWarpData1, lengthEpilines1, preWarpData2, lengthEpilines2, tmpDataImageDst, numScanlinesMorphedImage, alpha, runs1, numRuns1, runs2, numRuns2, runCorrelation1, runCorrelation2);        
+ //     //  cout << "morph " << endl;        
+ //       morphImage = cvCreateImage(cvSize(leftImage->width,leftImage->height),8,3);       
+ //       cvPostWarpImage(lineCount, tmpDataImageDst, numScanlinesMorphedImage, morphImage, scanlinesMorphedImage);   
+ //       cvDeleteMoire(morphImage);     
+	//	cvDeleteMoire(morphImage);   
+ //       cvNamedWindow("altro",1);        
+ //       cvShowImage("altro",morphImage);
+ //       //cvSaveImage("C:\test", morphImage);       
+ //      // cout << "alpha value: " << alpha << endl;
+ //       alpha -= 0.03;
+ //       waitKey(100);
+ //   }
+
+  
+   
+    
+    IplImage* srcImage = cvLoadImage(src, CV_LOAD_IMAGE_ANYCOLOR|CV_LOAD_IMAGE_ANYDEPTH);
+    IplImage* destImage = cvLoadImage(dst, CV_LOAD_IMAGE_ANYCOLOR|CV_LOAD_IMAGE_ANYDEPTH);
+    IplImage* morphImage = cvCreateImage(cvGetSize(destImage), IPL_DEPTH_8U, 3);
+    
+    if (!srcImage || !destImage) {
+        cerr << "cannot find image file" << endl;
+        exit(-1);
+    }
+    
+    // load feature line mapping from text files
+    int srcFeatureNum=5;
+    int destFeatureNum=5;
+    vector< pair <CvPoint, CvPoint> > srcFeatures;
+    vector< pair <CvPoint, CvPoint> > destFeatures;
+    
+    {
+        //ifstream srcFeatureStream(srcFeatureFile);
+        //ifstream destFeatureStream(destFeatureFile);
+        
+        //srcFeatureStream >> srcFeatureNum;
+        for (int i=0; i<srcFeatureNum; i++)
+        {
+           // cv::KeyPoint pt1 = info.keyPoint_query[info.good_matches[i*2].queryIdx];
+          //  cv::KeyPoint pt2 = info.keyPoint_train[info.good_matches[i*2+1].queryIdx];
+           // CvPoint p1=cvPoint(pt1.pt.x,pt1.pt.y);
+           // CvPoint p2=cvPoint(pt2.pt.x,pt2.pt.y);
+            srcFeatures.pb(mp(allPoints[i*4],allPoints[2+i*4]));
+        }
+        
+      //  destFeatureStream >> destFeatureNum;
+        for (int i=0; i<destFeatureNum; i++) {
+          //  cv::KeyPoint pt1 = info.keyPoint_query[info.good_matches[i*2].trainIdx];
+          //  cv::KeyPoint pt2 = info.keyPoint_train[info.good_matches[i*2+1].trainIdx];
+          //  CvPoint p1=cvPoint(pt1.pt.x,pt1.pt.y);
+          //  CvPoint p2=cvPoint(pt2.pt.x,pt2.pt.y);
+            destFeatures.pb(mp(allPoints[i*4+1],allPoints[i*4+3]));
+        }
+        
+      //  srcFeatureStream.close();
+      // destFeatureStream.close();
+    }
+    
+    int w = destImage->width;
+    int h = destImage->height;
+    
+    vector< pair <CvPoint, CvPoint> > targetFeatures(destFeatureNum);
+    int fileIndex = 0;
+    
+    //cvNamedWindow("mywindow");
+    // increase time parameter
+    for (double t=0; t<=1.0F; t+=1.0F/FRAMENUM) {
+        // calculate intermediate feature line
+        for (int i=0; i<destFeatureNum; i++) {
+            pair <CvPoint, CvPoint> sp = srcFeatures[i];
+            pair <CvPoint, CvPoint> dp = destFeatures[i];
+            CvPoint t1 = cvPoint( (1.0F-t)*sp.first.x + t*dp.first.x, (1.0F-t)*sp.first.y + t*dp.first.y );
+            CvPoint t2 = cvPoint( (1.0F-t)*sp.second.x + t*dp.second.x, (1.0F-t)*sp.second.y + t*dp.second.y );
+            targetFeatures[i] = mp(t1, t2);
+        }
+        
+        // calculate warped images from src image and dest image, and cross-dissolve two warped images into target image
+        for (int y=0; y<h; y++) {
+            for (int x=0; x<w; x++) {
+                double sumsdx=0, sumsdy=0, sumddx=0, sumddy=0, sumweight=0;
+                for (int i=0; i<destFeatureNum; i++) {
+                    // calculate weight for point(x,y) with line(i)
+                    double u,v,rawv,weight;
+                    {
+                        pair<CvPoint,CvPoint> tp = targetFeatures[i];
+                        // vertical vector is ps.second.y-ps.first.y, -ps.second.x+ps.first.x
+                        double vx =  tp.second.y - tp.first.y;
+                        double vy = -tp.second.x + tp.first.x;
+                        double hx =  tp.second.x - tp.first.x;
+                        double hy =  tp.second.y - tp.first.y;
+                        double tx =  x - tp.first.x;
+                        double ty =  y - tp.first.y;
+                        
+                        // calc u
+                        u = (tx*hx + ty*hy) / lengthSquare(hx,hy);
+                        double vu = length(vx, vy);
+                        rawv = (vx*tx + vy*ty) / vu;
+                        if (u <= 0) {
+                            // v = PX
+                            v = length(tx, ty);
+                        } else if (u >= 1) {
+                            // v = QX
+                            v = length(x - tp.second.x, y - tp.second.y);
+                        } else {
+                            // vertical vector length
+                            v = abs(rawv);
+                        }
+                        double lineLength = length(hx, hy);
+                        weight = pow ((pow(lineLength, P)/(A+v)), B);
+                        assert(weight >= 0);
+                    }
+                    
+                    {
+                        pair<CvPoint, CvPoint> sf = srcFeatures[i];
+                        CvPoint sp = getMappingPoint(sf.first, sf.second, u, rawv);
+                        double sdx = x - sp.x;
+                        double sdy = y - sp.y;
+                        //printf("sdx=%f sdy=%f weight=%f\n", sdx, sdy, weight);
+                        sumsdx += sdx*weight;
+                        sumsdy += sdy*weight;
+                    }
+                    
+                    {
+                        pair<CvPoint, CvPoint> df = destFeatures[i];
+                        CvPoint dp = getMappingPoint(df.first, df.second, u, rawv);
+                        double ddx = x - dp.x;
+                        double ddy = y - dp.y;
+                        sumddx += ddx*weight;
+                        sumddy += ddy*weight;
+                    }
+                    
+                    sumweight += weight;
+                }
+                double avesdx = sumsdx/sumweight;
+                double avesdy = sumsdy/sumweight;
+                double aveddx = sumddx/sumweight;
+                double aveddy = sumddy/sumweight;
+                
+                int sx = (int)(x - avesdx);
+                int sy = (int)(y - avesdy);
+                int dx = (int)(x - aveddx);
+                int dy = (int)(y - aveddy);
+                if (sx < 0 || sx > srcImage->width || sy < 0 || sy > srcImage->height) {
+                    continue;
+                }
+                if (dx < 0 || dx > destImage->width || dy < 0 || dy > destImage->height) {
+                    continue;
+                }
+                int destIndex = destImage->widthStep * dy + dx * destImage->nChannels;
+                int srcIndex = srcImage->widthStep * sy + sx * srcImage->nChannels;
+                int targetIndex = morphImage->widthStep * y + x * morphImage->nChannels;
+                for (int i=0; i<morphImage->nChannels; i++) {
+                    uchar dp = (destImage->imageData[destIndex+i]);
+                    uchar sp = (srcImage->imageData[srcIndex+i]);
+                    int diff =  (int)dp - (int)sp;
+                    int newvalue = diff * sigmoid(t) + sp;
+                    //int newvalue = diff * t + sp;
+                    //printf("diff=%d old=%d new=%d\n", diff, sp, newvalue);
+                    assert(newvalue <= 255 && newvalue >= 0);
+                    morphImage->imageData[targetIndex+i] = (uchar)newvalue;
+                }
+                //printf("source=(%d,%d) dest=(%d,%d)\n", sx, sy, x, y);
+            }
+        }
+        char outfile[256];
+        sprintf(outfile, "C:/test/morph%03d.jpg", fileIndex++);
+       // int res = cvSaveImage(outfile, morphImage);
+        cvShowImage("mywindow", morphImage);
+        cvWaitKey(1);
+        //printf("save to %s\n", outfile);
+    }
+	cout<<"ALL DONE!!!!"<<endl;
+    cvWaitKey(0);
+    
+    // 摽宎藺
+    cvReleaseImage(&srcImage);
+    cvReleaseImage(&destImage);
+    cvReleaseImage(&morphImage);
+    
+	
+
+							
+							cvWaitKey(0);
+							alignmentResult1.clear();
+							alignmentResult2.clear();
+							faceWindow.clear();
+							//FaceFP.clear();	
+							cvReleaseImage(&img);
+			                cvReleaseImage(&drawimg);		
+waitKey(0);
+    		
+}
